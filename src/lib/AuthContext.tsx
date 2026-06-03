@@ -128,6 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const sheetsProvider = new GoogleAuthProvider();
       sheetsProvider.addScope('https://www.googleapis.com/auth/spreadsheets');
       sheetsProvider.addScope('https://www.googleapis.com/auth/drive.file');
+      sheetsProvider.addScope('https://www.googleapis.com/auth/gmail.send');
       
       const result = await signInWithPopup(auth, sheetsProvider);
       const credential = GoogleAuthProvider.credentialFromResult(result);

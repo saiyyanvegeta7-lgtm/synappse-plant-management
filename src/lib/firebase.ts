@@ -6,14 +6,14 @@ import firebaseConfigJson from '../../firebase-applet-config.json';
 // Support both environment variables (vibe of production deploys) and static JSON local config
 const metaEnv = (import.meta as any).env || {};
 const firebaseConfig = {
-  apiKey: metaEnv.VITE_FIREBASE_API_KEY || firebaseConfigJson.apiKey || '',
-  authDomain: metaEnv.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfigJson.authDomain || '',
-  projectId: metaEnv.VITE_FIREBASE_PROJECT_ID || firebaseConfigJson.projectId || '',
-  storageBucket: metaEnv.VITE_FIREBASE_STORAGE_BUCKET || firebaseConfigJson.storageBucket || '',
-  messagingSenderId: metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseConfigJson.messagingSenderId || '',
-  appId: metaEnv.VITE_FIREBASE_APP_ID || firebaseConfigJson.appId || '',
-  measurementId: metaEnv.VITE_FIREBASE_MEASUREMENT_ID || firebaseConfigJson.measurementId || '',
-  firestoreDatabaseId: metaEnv.VITE_FIREBASE_FIRESTORE_DATABASE_ID || firebaseConfigJson.firestoreDatabaseId || 'default'
+  apiKey: metaEnv.VITE_FIREBASE_API_KEY || (firebaseConfigJson as any).apiKey || '',
+  authDomain: metaEnv.VITE_FIREBASE_AUTH_DOMAIN || (firebaseConfigJson as any).authDomain || '',
+  projectId: metaEnv.VITE_FIREBASE_PROJECT_ID || (firebaseConfigJson as any).projectId || '',
+  storageBucket: metaEnv.VITE_FIREBASE_STORAGE_BUCKET || (firebaseConfigJson as any).storageBucket || '',
+  messagingSenderId: metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID || (firebaseConfigJson as any).messagingSenderId || '',
+  appId: metaEnv.VITE_FIREBASE_APP_ID || (firebaseConfigJson as any).appId || '',
+  measurementId: metaEnv.VITE_FIREBASE_MEASUREMENT_ID || (firebaseConfigJson as any).measurementId || '',
+  firestoreDatabaseId: metaEnv.VITE_FIREBASE_FIRESTORE_DATABASE_ID || (firebaseConfigJson as any).firestoreDatabaseId || 'default'
 };
 
 // Initialize Firebase

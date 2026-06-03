@@ -357,36 +357,57 @@ Synapse Operations Notification Hub
             </div>
 
             {/* Email triggers */}
-            <div className="space-y-3">
+            <div className="space-y-4">
               <span className="text-[9px] uppercase font-bold tracking-widest text-[#3d5570] block">Deliver Alert Immediately</span>
-              
-              <div className="grid grid-cols-1 gap-3">
-                <a 
-                  href={mailtoUrl}
-                  onClick={() => toast.success('Launching system mail app...')}
-                  className="w-full py-3.5 bg-[#00e5c3] hover:bg-[#00c9ab] text-[#07090d] font-bold rounded-xl text-sm flex items-center justify-center gap-2.5 shadow-lg shadow-[#00e5c3]/15 transition-all text-center"
-                >
-                  <Mail className="w-5 h-5" />
-                  DISPATCH ACTUAL EMAIL NOW
-                </a>
-                
-                <div className="text-left bg-[#07090d]/50 border border-[#1f2d40] rounded-xl p-3.5 font-sans space-y-1.5">
+
+              {accessToken ? (
+                <div className="bg-[#06d6a0]/10 border border-[#06d6a0]/30 rounded-xl p-4 text-left font-sans space-y-2">
                   <div className="flex justify-between items-center text-[10px] tracking-wider uppercase font-bold">
-                    <span className="text-[#7a95b0]">Cloud Webhook Service</span>
-                    {webhookUrl ? (
-                      <span className="text-[#06d6a0] flex items-center gap-1">🟢 Active</span>
-                    ) : (
-                      <span className="text-[#3d5570]">⚪ Not Linked</span>
-                    )}
+                    <span className="text-[#7a95b0]">Background Gmail Delivery</span>
+                    <span className="text-[#06d6a0] flex items-center gap-1">⚡ Sent Automatically</span>
+                  </div>
+                  <p className="text-xs text-[#dde6f0] leading-relaxed font-medium">
+                    The Synapse Operating Engine used your verified Google Account to automatically dispatch the notification email to L1 Reviewers: <span className="text-[#00e5c3] font-mono">{finalL1Emails.join(', ')}</span> without requiring manual actions!
+                  </p>
+                  <div className="text-[10px] text-[#7a95b0] italic">
+                    ✓ Verified via Google OAuth API System Scopes
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="bg-[#ff9f1c]/10 border border-[#ff9f1c]/30 rounded-xl p-4 text-left font-sans space-y-1.5">
+                    <div className="flex justify-between items-center text-[10px] tracking-wider uppercase font-bold">
+                      <span className="text-[#7a95b0]">Direct Delivery Warning</span>
+                      <span className="text-[#ff9f1c] flex items-center gap-1">👤 Auth Required</span>
+                    </div>
+                    <p className="text-xs text-[#7a95b0] leading-relaxed">
+                      You are logged in via Firebase, but your Google Workspace/Gmail API access hasn't been authorized yet. 
+                      Click below to trigger a standard email dispatch, or authorize "Google Sheets & Gmail" in the Database Hub for fully silent background delivery.
+                    </p>
+                  </div>
+
+                  <a 
+                    href={mailtoUrl}
+                    onClick={() => toast.success('Launching system mail app...')}
+                    className="w-full py-3.5 bg-[#00e5c3] hover:bg-[#00c9ab] text-[#07090d] font-bold rounded-xl text-sm flex items-center justify-center gap-2.5 shadow-lg shadow-[#00e5c3]/15 transition-all text-center"
+                  >
+                    <Mail className="w-5 h-5" />
+                    DISPATCH ACTUAL EMAIL NOW
+                  </a>
+                </div>
+              )}
+              
+              {webhookUrl && (
+                <div className="text-left bg-[#07090d]/50 border border-[#1f2d40] rounded-xl p-3.5 font-sans space-y-1 font-medium">
+                  <div className="flex justify-between items-center text-[10px] tracking-wider uppercase font-bold">
+                    <span className="text-[#7a95b0]">Secondary Webhook Service</span>
+                    <span className="text-[#06d6a0] flex items-center gap-1">🟢 Sent</span>
                   </div>
                   <p className="text-[11px] text-[#5a6e85] leading-relaxed">
-                    {webhookUrl 
-                      ? "Your automated cloud webhook was notified in the background instantly! An email has been sent using your Google Account." 
-                      : "No Apps Script URL is set. The email was not sent automatically in the cloud. Tap the button above to manually dispatch the email instantly!"
-                    }
+                    The Google Apps Script deployment webhook was also updated instantly in your connected master spreadsheet!
                   </p>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Close */}

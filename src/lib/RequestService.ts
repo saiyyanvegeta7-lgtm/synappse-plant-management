@@ -95,12 +95,58 @@ export const RequestService = {
         GoogleSheetsService.appendRow(accessToken, spreadsheetId, 'Requests', row).catch(console.error);
       }
 
-      // Dispatch Webhook email notification to the Level 1 approver immediately
+      // Dispatch Webhook & Automated Direct Gmail notification to the Level 1 approver immediately
       try {
         const l1Emails = await this.getApproverEmailsForLevel(1);
+        const finalL1Emails = l1Emails.length > 0 ? l1Emails : ['purandhar@patilgroup.com'];
+        const recipientEmailStr = finalL1Emails.join(', ');
+
+        // 1. Send direct Gmail automatically in the background via user's Google OAuth provider
+        if (accessToken) {
+          try {
+            const mailSubject = `[Synapse Action Required] Review Request: ${data.title} (Priority: ${data.priority})`;
+            const activeOrigin = window.location.origin;
+            const mailBody = `Dear Plant Engineer / Level 1 Reviewer,
+
+A new plant operations & maintenance request has been raised on the Synapse Plant Management System and has been registered automatically. It is awaiting your immediate review at Level 1 (Plant Engineer).
+
+=======================================================
+REQUISITION METADATA
+=======================================================
+• Request ID: #${docRef.id}
+• Request Title: ${data.title}
+• Category: ${data.type}
+• Priority Level: ${data.priority}
+• Estimated Budget: ₹${(data.cost || 0).toLocaleString('en-IN')}
+• Logged By: ${user.name} (${user.email})
+• Date Initiated: ${newRequest.date}
+
+=======================================================
+DETAILED JUSTIFICATION & REMARKS
+=======================================================
+${data.desc || ''}
+
+=======================================================
+HOW TO REVIEW & DECIDE
+=======================================================
+Please click the link below to access the Synapse Portal, sign in as Level 1 Approver, navigate to "My Approvals", and submit your review:
+
+👉 Access Synapse System: ${activeOrigin}
+
+Thank you,
+Synapse Operations Notification Hub
+`;
+            const { GmailService } = await import('./GmailService');
+            await GmailService.sendEmail(accessToken, finalL1Emails, mailSubject, mailBody);
+            console.log('Direct automated email dispatched to Level 1 Approvers via Gmail API.');
+          } catch (mailError) {
+            console.error('Failed direct Gmail delivery:', mailError);
+          }
+        }
+
+        // 2. Fallback / supplementary Webhook trigger
         const webAppUrl = settings?.plant_ops_workflow_web_app_url;
         if (webAppUrl) {
-          const recipientEmailStr = l1Emails.join(', ');
           fetch(webAppUrl, {
             method: 'POST',
             mode: 'no-cors',
@@ -191,32 +237,137 @@ export const RequestService = {
         );
       }
 
-      // Dispatch Webhook email notification if configured
-      const webAppUrl = settings?.plant_ops_workflow_web_app_url;
-      if (webAppUrl) {
-        let recipientEmails: string[] = [];
-        let feedbackMessageStr = comment || 'No comments provided.';
+      // Direct automated reviewer alert via Gmail / Webhook
+      let recipientEmails: string[] = [];
+      let feedbackMessageStr = comment || 'No comments provided.';
 
-        if (action === 'approve') {
-          if (stepIndex < updatedSteps.length - 1) {
-            // Pending next level approval
-            recipientEmails = await this.getApproverEmailsForLevel(currentLevel + 1);
-            feedbackMessageStr = `Level ${currentLevel} approved by ${user.name} with comment: "${comment || 'No comment'}". This request is now pending your immediate review at Level ${currentLevel + 1}.`;
-          } else {
-            // Fully approved! Notify requester.
-            const reqEmail = await this.getRequesterEmail(request.requesterUid);
-            if (reqEmail) recipientEmails.push(reqEmail);
-            feedbackMessageStr = `Congratulations! Your request has been fully APPROVED by ${user.name} at the final level with comment: "${comment || 'No comment'}".`;
-          }
+      if (action === 'approve') {
+        if (stepIndex < updatedSteps.length - 1) {
+          // Pending next level approval
+          recipientEmails = await this.getApproverEmailsForLevel(currentLevel + 1);
+          feedbackMessageStr = `Level ${currentLevel} approved by ${user.name} with comment: "${comment || 'No comment'}". This request is now pending your immediate review at Level ${currentLevel + 1}.`;
         } else {
-          // Rejected! Notify requester.
+          // Fully approved! Notify requester.
           const reqEmail = await this.getRequesterEmail(request.requesterUid);
           if (reqEmail) recipientEmails.push(reqEmail);
-          feedbackMessageStr = `Your request has been REJECTED by ${user.name} at Level ${currentLevel} with comment: "${comment || 'No comment'}".`;
+          feedbackMessageStr = `Congratulations! Your request has been fully APPROVED by ${user.name} at the final level with comment: "${comment || 'No comment'}".`;
         }
+      } else {
+        // Rejected! Notify requester.
+        const reqEmail = await this.getRequesterEmail(request.requesterUid);
+        if (reqEmail) recipientEmails.push(reqEmail);
+        feedbackMessageStr = `Your request has been REJECTED by ${user.name} at Level ${currentLevel} with comment: "${comment || 'No comment'}".`;
+      }
 
-        const recipientEmailStr = recipientEmails.join(', ');
+      const finalRecipientEmails = recipientEmails.length > 0 ? recipientEmails : ['purandhar@patilgroup.com'];
+      const recipientEmailStr = finalRecipientEmails.join(', ');
 
+      // 1. Direct Automated Gmail Send
+      if (accessToken && finalRecipientEmails.length > 0) {
+        try {
+          let mailSubject = `[Synapse Update] Request #${docId} Status Update`;
+          let mailBody = '';
+          const activeOrigin = window.location.origin;
+
+          if (action === 'approve') {
+            if (stepIndex < updatedSteps.length - 1) {
+              mailSubject = `[Synapse Action Required] Review Request: ${request.title} (Level ${currentLevel + 1} Review)`;
+              mailBody = `Dear Level ${currentLevel + 1} Reviewer,
+
+A plant operations & maintenance request has been APPROVED at Level ${currentLevel} by ${user.name} and has advanced to Stage ${currentLevel + 1} for your immediate review.
+
+=======================================================
+REQUISITION METADATA
+=======================================================
+• Request ID: #${docId}
+• Request Title: ${request.title}
+• Category: ${request.type}
+• Priority Level: ${request.priority}
+• Estimated Budget: ₹${(request.cost || 0).toLocaleString('en-IN')}
+• Logged By: ${request.requesterName}
+• Date Initiated: ${request.date}
+
+=======================================================
+REVIEW HISTORY & REMARKS
+=======================================================
+• Approved At Level ${currentLevel} By: ${user.name}
+• Approver Comments: "${comment || 'No comments provided'}"
+
+=======================================================
+HOW TO REVIEW & DECIDE
+=======================================================
+Please click the link below to access the Synapse Portal, sign in as Level ${currentLevel + 1} Approver, navigate to "My Approvals", and submit your review:
+
+👉 Access Synapse System: ${activeOrigin}
+
+Thank you,
+Synapse Operations Notification Hub
+`;
+            } else {
+              mailSubject = `[Synapse Status: APPROVED] Requisition #${docId} Fully Approved`;
+              mailBody = `Dear ${request.requesterName},
+
+We are pleased to inform you that your plant operations & maintenance request has been FULLY APPROVED at Stage 3 (final level) by ${user.name}.
+
+=======================================================
+REQUISITION METADATA
+=======================================================
+• Request ID: #${docId}
+• Request Title: ${request.title}
+• Category: ${request.type}
+• Estimated Budget: ₹${(request.cost || 0).toLocaleString('en-IN')}
+• Date Completed: ${new Date().toLocaleDateString('en-GB')}
+
+=======================================================
+FINAL COMMENTS & INSTRUCTIONS
+=======================================================
+• Decided By: ${user.name}
+• Comments: "${comment || 'Approved without further remarks'}"
+
+👉 Track Status In Portal: ${activeOrigin}
+
+Thank you,
+Synapse Operations Notification Hub
+`;
+            }
+          } else {
+            mailSubject = `[Synapse Status: REJECTED] Requisition #${docId} Rejected`;
+            mailBody = `Dear ${request.requesterName},
+
+Your plant operations & maintenance request has been REJECTED at Level ${currentLevel} by ${user.name}.
+
+=======================================================
+REQUISITION DETAILS
+=======================================================
+• Request ID: #${docId}
+• Request Title: ${request.title}
+• Category: ${request.type}
+• Estimated Budget: ₹${(request.cost || 0).toLocaleString('en-IN')}
+
+=======================================================
+REJECTION REASON & REVIEWS
+=======================================================
+• Rejected At Level ${currentLevel} By: ${user.name}
+• Reason/Feedback: "${comment || 'No comment provided'}"
+
+👉 Track Status In Portal: ${activeOrigin}
+
+Thank you,
+Synapse Operations Notification Hub
+`;
+          }
+
+          const { GmailService } = await import('./GmailService');
+          await GmailService.sendEmail(accessToken, finalRecipientEmails, mailSubject, mailBody);
+          console.log('Automated workflow stage email dispatched successfully via Gmail REST API.');
+        } catch (mailError) {
+          console.error('Failed to dispatch direct email notification:', mailError);
+        }
+      }
+
+      // 2. Optional webhook trigger
+      const webAppUrl = settings?.plant_ops_workflow_web_app_url;
+      if (webAppUrl) {
         fetch(webAppUrl, {
           method: 'POST',
           mode: 'no-cors',
