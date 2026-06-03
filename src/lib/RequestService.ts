@@ -243,8 +243,14 @@ Synapse Operations Notification Hub
 
       if (action === 'approve') {
         if (stepIndex < updatedSteps.length - 1) {
-          // Pending next level approval
-          recipientEmails = await this.getApproverEmailsForLevel(currentLevel + 1);
+          // Pending next level approval - send email to both the next level approvers and the requester
+          const levelApprovers = await this.getApproverEmailsForLevel(currentLevel + 1);
+          recipientEmails.push(...levelApprovers);
+          
+          const reqEmail = await this.getRequesterEmail(request.requesterUid);
+          if (reqEmail) {
+            recipientEmails.push(reqEmail);
+          }
           feedbackMessageStr = `Level ${currentLevel} approved by ${user.name} with comment: "${comment || 'No comment'}". This request is now pending your immediate review at Level ${currentLevel + 1}.`;
         } else {
           // Fully approved! Notify requester.
@@ -259,7 +265,9 @@ Synapse Operations Notification Hub
         feedbackMessageStr = `Your request has been REJECTED by ${user.name} at Level ${currentLevel} with comment: "${comment || 'No comment'}".`;
       }
 
-      const finalRecipientEmails = recipientEmails.length > 0 ? recipientEmails : ['purandhar@patilgroup.com'];
+      // Filter to ensure unique emails
+      const uniqueRecipientEmails = Array.from(new Set(recipientEmails.filter(Boolean)));
+      const finalRecipientEmails = uniqueRecipientEmails.length > 0 ? uniqueRecipientEmails : ['purandhar@patilgroup.com'];
       const recipientEmailStr = finalRecipientEmails.join(', ');
 
       // 1. Direct Automated Gmail Send
@@ -272,9 +280,9 @@ Synapse Operations Notification Hub
           if (action === 'approve') {
             if (stepIndex < updatedSteps.length - 1) {
               mailSubject = `[Synapse Action Required] Review Request: ${request.title} (Level ${currentLevel + 1} Review)`;
-              mailBody = `Dear Level ${currentLevel + 1} Reviewer,
+              mailBody = `Dear Level ${currentLevel + 1} Reviewer & Requester,
 
-A plant operations & maintenance request has been APPROVED at Level ${currentLevel} by ${user.name} and has advanced to Stage ${currentLevel + 1} for your immediate review.
+A plant operations & maintenance request has been APPROVED at Level ${currentLevel} by ${user.name} and has advanced to Stage ${currentLevel + 1} for immediate review.
 
 =======================================================
 REQUISITION METADATA
@@ -294,11 +302,16 @@ REVIEW HISTORY & REMARKS
 • Approver Comments: "${comment || 'No comments provided'}"
 
 =======================================================
-HOW TO REVIEW & DECIDE
+HOW TO REVIEW & DECIDE (FOR APPROVER)
 =======================================================
 Please click the link below to access the Synapse Portal, sign in as Level ${currentLevel + 1} Approver, navigate to "My Approvals", and submit your review:
 
 👉 Access Synapse System: ${activeOrigin}
+
+=======================================================
+STATUS UPDATE (FOR REQUESTER)
+=======================================================
+No further action is required from you at this review level. We will update you again automatically.
 
 Thank you,
 Synapse Operations Notification Hub

@@ -115,7 +115,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      const loginProvider = new GoogleAuthProvider();
+      loginProvider.addScope('https://www.googleapis.com/auth/spreadsheets');
+      loginProvider.addScope('https://www.googleapis.com/auth/drive.file');
+      loginProvider.addScope('https://www.googleapis.com/auth/gmail.send');
+      
+      const result = await signInWithPopup(auth, loginProvider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (credential && credential.accessToken) {
+        setAccessToken(credential.accessToken);
+      }
       toast.success('Logged in successfully');
     } catch (error) {
       console.error('Login error:', error);

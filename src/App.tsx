@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './lib/AuthContext';
 import { RequestService } from './lib/RequestService';
+import { SettingsService } from './lib/SettingsService';
 import { Request, RequestStatus, Priority, UserProfile } from './types';
 import { Toaster, toast } from 'react-hot-toast';
 import { LogIn, Factory, ShieldCheck, ClipboardList, Settings, LogOut, User, Users, LayoutDashboard, Wrench, Package, Lightbulb, GraduationCap, BarChart3, BrainCircuit, Plus, X, Check, AlertCircle, Activity, MessageSquare, Database, Mail } from 'lucide-react';
@@ -95,7 +96,7 @@ function AnalyticsView() {
 }
 
 function NewRequestModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
-  const { profile, accessToken } = useAuth();
+  const { profile, accessToken, connectGoogleSheets } = useAuth();
   const [title, setTitle] = useState('');
   const [type, setType] = useState('Spares Purchase');
   const [priority, setPriority] = useState<Priority>('Medium');
@@ -104,6 +105,8 @@ function NewRequestModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [l1Emails, setL1Emails] = useState<string[]>([]);
   const [webhookUrl, setWebhookUrl] = useState<string | null>(null);
+  const [sheetId, setSheetId] = useState('');
+  const [sheetName, setSheetName] = useState('');
   const [submittedData, setSubmittedData] = useState<{
     id: string;
     title: string;
@@ -112,6 +115,14 @@ function NewRequestModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => 
     cost: number;
     desc: string;
   } | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = SettingsService.subscribeToGlobalSettings((settings) => {
+      setSheetId(settings.plant_ops_spreadsheet_id || '');
+      setSheetName(settings.plant_ops_spreadsheet_name || '');
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -304,6 +315,25 @@ Synapse Operations Notification Hub
                 </div>
               </div>
 
+              {sheetId && !accessToken && (
+                <div className="bg-[#ff9f1c]/10 border border-[#ff9f1c]/25 rounded-2xl p-4 text-left font-sans space-y-2">
+                  <div className="flex justify-between items-center text-[10px] tracking-wider uppercase font-bold text-[#ff9f1c]">
+                    <span className="flex items-center gap-1.5 font-sans">⚠️ Sheets Sync is Idle</span>
+                    <span className="bg-[#ff9f1c]/20 text-[#ff9f1c] px-2 py-0.5 rounded text-[8px] font-mono">Authorization Required</span>
+                  </div>
+                  <p className="text-xs text-[#dde6f0] leading-relaxed font-sans">
+                    A linked spreadsheet is configured, but your session is not authorized. Click below to allow immediate registration on Google Sheets!
+                  </p>
+                  <button
+                    type="button"
+                    onClick={connectGoogleSheets}
+                    className="w-full py-2 bg-[#ff9f1c]/25 hover:bg-[#ff9f1c]/35 text-[#ff9f1c] border border-[#ff9f1c]/45 rounded-xl text-xs uppercase font-bold tracking-wider transition-all"
+                  >
+                    Quick Authorize Sheets & Mail
+                  </button>
+                </div>
+              )}
+
               <div className="pt-2 flex gap-3">
                 <button 
                   type="button" 
@@ -431,10 +461,20 @@ function MainApp() {
   const [activeView, setActiveView] = useState('dashboard');
   const [requests, setRequests] = useState<Request[]>([]);
   const [isNewReqOpen, setIsNewReqOpen] = useState(false);
-  const { profile } = useAuth();
+  const { profile, accessToken, connectGoogleSheets } = useAuth();
+  const [sheetId, setSheetId] = useState('');
+  const [sheetName, setSheetName] = useState('');
 
   useEffect(() => {
     const unsubscribe = RequestService.subscribeToRequests(setRequests);
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = SettingsService.subscribeToGlobalSettings((settings) => {
+      setSheetId(settings.plant_ops_spreadsheet_id || '');
+      setSheetName(settings.plant_ops_spreadsheet_name || '');
+    });
     return () => unsubscribe();
   }, []);
 
@@ -473,6 +513,34 @@ function MainApp() {
             </button>
           </div>
         </header>
+
+        {sheetId && !accessToken && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8 bg-[#ff9f1c]/10 border border-[#ff9f1c]/25 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-5 shadow-lg shadow-[#ff9f1c]/5 animate-none"
+          >
+            <div className="flex items-start gap-4">
+              <div className="bg-[#ff9f1c]/10 text-[#ff9f1c] p-2.5 rounded-xl border border-[#ff9f1c]/20 shrink-0">
+                <AlertCircle className="w-5 h-5 animate-pulse" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-[#dde6f0] font-sans">
+                  Google Sheets Backup & Automated Mail Dispatch is Sleep Mode 💤
+                </h4>
+                <p className="text-xs text-[#7a95b0] mt-1 max-w-2xl leading-relaxed font-sans">
+                  The Master Sheet <span className="text-[#ff9f1c] font-mono">"{sheetName}"</span> is globally connected, but Google token authentication is required for this session. Please authorize your Google Account with a single tap to enable automatic row recording and silent background email delivery.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={connectGoogleSheets}
+              className="px-5 py-3 bg-[#ff9f1c] hover:brightness-110 active:scale-95 text-[#07090d] font-bold rounded-xl text-xs uppercase tracking-wider transition-all whitespace-nowrap shrink-0 shadow-lg shadow-[#ff9f1c]/10"
+            >
+              Authorize Sheets & Gmail
+            </button>
+          </motion.div>
+        )}
 
         <AnimatePresence mode="wait">
           <motion.div
@@ -680,6 +748,20 @@ function RequestsView({ requests }: { requests: Request[] }) {
 function PendingView({ requests }: { requests: Request[] }) {
   const { profile, accessToken } = useAuth();
   const [comment, setComment] = useState('');
+  const [decisionResult, setDecisionResult] = useState<{
+    id: string;
+    title: string;
+    type: string;
+    priority: string;
+    cost: number;
+    desc: string;
+    requesterName: string;
+    requesterEmail: string;
+    action: 'approve' | 'reject';
+    comment: string;
+    level: number;
+    nextLevelEmails: string[];
+  } | null>(null);
 
   const handleAction = async (request: Request, action: 'approve' | 'reject') => {
     if (!profile) return;
@@ -687,13 +769,243 @@ function PendingView({ requests }: { requests: Request[] }) {
     if (!activeStep) return;
 
     try {
+      // 1. Prevalidate/Pre-fetch the requester email
+      const reqEmail = await RequestService.getRequesterEmail(request.requesterUid) || '';
+      
+      // 2. Prevalidate/Pre-fetch next level emails if advancing
+      let nextEmails: string[] = [];
+      if (action === 'approve' && activeStep.level < 3) {
+        nextEmails = await RequestService.getApproverEmailsForLevel(activeStep.level + 1);
+      }
+
+      // 3. Complete database update & background triggers
       await RequestService.updateApproval(request.id, request, activeStep.level, profile, action, comment, accessToken || undefined);
+      
+      // 4. Save results to show success feedback with manual layout buttons if needed
+      setDecisionResult({
+        id: request.id,
+        title: request.title,
+        type: request.type,
+        priority: request.priority,
+        cost: request.cost,
+        desc: request.desc,
+        requesterName: request.requesterName,
+        requesterEmail: reqEmail,
+        action,
+        comment,
+        level: activeStep.level,
+        nextLevelEmails: nextEmails,
+      });
+
       toast.success(`Request ${action}d successfully`);
       setComment('');
     } catch (error) {
       toast.error(`Failed to ${action} request`);
     }
   };
+
+  // Compile mailto link for direct secure client dispatch on fallback
+  let mailtoSubject = '';
+  let mailtoBody = '';
+  let mailtoRecipients: string[] = [];
+
+  if (decisionResult) {
+    const activeOrigin = window.location.origin;
+    if (decisionResult.action === 'approve') {
+      if (decisionResult.level < 3) {
+        mailtoSubject = `[Synapse Action Required] Review Request: ${decisionResult.title} (Level ${decisionResult.level + 1} Review)`;
+        mailtoBody = `Dear Level ${decisionResult.level + 1} Reviewer & Requester,
+
+A plant operations & maintenance request has been APPROVED at Level ${decisionResult.level} by ${profile?.name || 'Approver'} and has advanced to Stage ${decisionResult.level + 1} for immediate review.
+
+=======================================================
+REQUISITION METADATA
+=======================================================
+• Request ID: #${decisionResult.id}
+• Request Title: ${decisionResult.title}
+• Category: ${decisionResult.type}
+• Priority Level: ${decisionResult.priority}
+• Estimated Budget: ₹${decisionResult.cost.toLocaleString('en-IN')}
+• Logged By: ${decisionResult.requesterName}
+
+=======================================================
+REVIEW HISTORY & REMARKS
+=======================================================
+• Approved At Level ${decisionResult.level} By: ${profile?.name || 'Approver'}
+• Approver Comments: "${decisionResult.comment || 'No comments provided'}"
+
+=======================================================
+HOW TO REVIEW & DECIDE (FOR APPROVER)
+=======================================================
+Please click the link below to access the Synapse Portal, sign in as Level ${decisionResult.level + 1} Approver, navigate to "My Approvals", and submit your review:
+
+👉 Access Synapse System: ${activeOrigin}
+
+=======================================================
+STATUS UPDATE (FOR REQUESTER)
+=======================================================
+No further action is required from you at this review level. We will update you again automatically.
+
+Thank you,
+Synapse Operations Notification Hub
+`;
+        mailtoRecipients = [...decisionResult.nextLevelEmails, decisionResult.requesterEmail];
+      } else {
+        mailtoSubject = `[Synapse Status: APPROVED] Requisition #${decisionResult.id} Fully Approved`;
+        mailtoBody = `Dear ${decisionResult.requesterName},
+
+We are pleased to inform you that your plant operations & maintenance request has been FULLY APPROVED at Stage 3 (final level) by ${profile?.name || 'Approver'}.
+
+=======================================================
+REQUISITION METADATA
+=======================================================
+• Request ID: #${decisionResult.id}
+• Request Title: ${decisionResult.title}
+• Category: ${decisionResult.type}
+• Estimated Budget: ₹${decisionResult.cost.toLocaleString('en-IN')}
+• Date Completed: ${new Date().toLocaleDateString('en-GB')}
+
+=======================================================
+FINAL COMMENTS & INSTRUCTIONS
+=======================================================
+• Decided By: ${profile?.name || 'Approver'}
+• Comments: "${decisionResult.comment || 'Approved without further remarks'}"
+
+👉 Track Status In Portal: ${activeOrigin}
+
+Thank you,
+Synapse Operations Notification Hub
+`;
+        mailtoRecipients = [decisionResult.requesterEmail];
+      }
+    } else {
+      mailtoSubject = `[Synapse Status: REJECTED] Requisition #${decisionResult.id} Rejected`;
+      mailtoBody = `Dear ${decisionResult.requesterName},
+
+Your plant operations & maintenance request has been REJECTED at Level ${decisionResult.level} by ${profile?.name || 'Approver'}.
+
+=======================================================
+REQUISITION DETAILS
+=======================================================
+• Request ID: #${decisionResult.id}
+• Request Title: ${decisionResult.title}
+• Category: ${decisionResult.type}
+• Estimated Budget: ₹${decisionResult.cost.toLocaleString('en-IN')}
+
+=======================================================
+REJECTION REASON & REVIEWS
+=======================================================
+• Rejected At Level ${decisionResult.level} By: ${profile?.name || 'Approver'}
+• Reason/Feedback: "${decisionResult.comment || 'No comment provided'}"
+
+👉 Track Status In Portal: ${activeOrigin}
+
+Thank you,
+Synapse Operations Notification Hub
+`;
+      mailtoRecipients = [decisionResult.requesterEmail];
+    }
+  }
+
+  const uniqueRecipients = Array.from(new Set(mailtoRecipients.filter(Boolean)));
+  const finalRecipients = uniqueRecipients.length > 0 ? uniqueRecipients : ['purandhar@patilgroup.com'];
+  const decisionMailtoUrl = `mailto:${finalRecipients.join(',')}?subject=${encodeURIComponent(mailtoSubject)}&body=${encodeURIComponent(mailtoBody)}`;
+
+  if (decisionResult) {
+    return (
+      <div className="bg-[#0f1520] border border-[#1f2d40] rounded-2xl p-8 max-w-xl mx-auto shadow-2xl text-center space-y-6">
+        <div className={cn(
+          "w-16 h-16 rounded-full flex items-center justify-center mx-auto border shadow-inner",
+          decisionResult.action === 'approve' 
+            ? "bg-[#06d6a0]/15 text-[#06d6a0] border-[#06d6a0]/30" 
+            : "bg-[#ef476f]/15 text-[#ef476f] border-[#ef476f]/30"
+        )}>
+          {decisionResult.action === 'approve' ? <Check className="w-8 h-8" /> : <X className="w-8 h-8" />}
+        </div>
+
+        <div>
+          <h3 className="text-xl font-bold text-[#dde6f0] mt-2">
+            Decision Successfully Logged
+          </h3>
+          <p className="text-xs text-[#7a95b0] mt-1 max-w-sm mx-auto font-sans">
+            You marked Request <span className="font-mono text-[#00e5c3] font-bold">#{decisionResult.id.substring(0, 8)}</span> as <span className={cn("font-bold uppercase", decisionResult.action === 'approve' ? "text-[#06d6a0]" : "text-[#ef476f]")}>{decisionResult.action}d</span>.
+          </p>
+        </div>
+
+        {/* Recipients list breakdown */}
+        <div className="bg-[#141c28]/60 border border-[#1f2d40] rounded-xl p-4 text-left space-y-2">
+          <div className="text-[10px] uppercase font-bold tracking-wider text-[#3d5570] font-sans">Active Notification Targets</div>
+          <div className="space-y-2">
+            {decisionResult.action === 'approve' && decisionResult.level < 3 && (
+              <div className="flex items-center gap-3 bg-[#07090d]/60 border border-[#1f2d40]/40 rounded-lg p-2.5">
+                <div className="w-6 h-6 rounded bg-[#00e5c3]/10 text-[#00e5c3] flex items-center justify-center text-xs font-bold font-mono">L{decisionResult.level + 1}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-bold text-[#dde6f0] font-sans">Next Level {decisionResult.level + 1} Approver</div>
+                  <div className="text-[10px] text-[#7a95b0] truncate font-sans">{decisionResult.nextLevelEmails.join(', ') || 'No approvers configured'}</div>
+                </div>
+              </div>
+            )}
+            <div className="flex items-center gap-3 bg-[#07090d]/60 border border-[#1f2d40]/40 rounded-lg p-2.5">
+              <div className="w-6 h-6 rounded bg-[#c77dff]/10 text-[#c77dff] flex items-center justify-center text-xs font-bold font-mono">REQ</div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-bold text-[#dde6f0] font-sans">Requester ({decisionResult.requesterName})</div>
+                <div className="text-[10px] text-[#7a95b0] truncate font-sans">{decisionResult.requesterEmail || 'No email configured'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Gmail triggers status */}
+        <div className="space-y-4">
+          <span className="text-[9px] uppercase font-bold tracking-widest text-[#3d5570] block font-sans">Delivery Pipeline</span>
+
+          {accessToken ? (
+            <div className="bg-[#06d6a0]/10 border border-[#06d6a0]/30 rounded-xl p-4 text-left font-sans space-y-1">
+              <div className="flex justify-between items-center text-[10px] tracking-wider uppercase font-bold">
+                <span className="text-[#7a95b0]">Background Gmail Delivery</span>
+                <span className="text-[#06d6a0] flex items-center gap-1">⚡ Sent Automatically</span>
+              </div>
+              <p className="text-xs text-[#dde6f0] leading-relaxed font-sans">
+                The Synapse Operations Hub dispatched the decision emails to all recipients automatically using your authorized session credentials!
+              </p>
+              <div className="text-[10px] text-[#7a95b0] italic mt-1 font-sans">
+                ✓ Delivered securely using OAuth API scopes
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="bg-[#ff9f1c]/10 border border-[#ff9f1c]/30 rounded-xl p-4 text-left font-sans space-y-1.5">
+                <div className="flex justify-between items-center text-[10px] tracking-wider uppercase font-bold">
+                  <span className="text-[#7a95b0]">Direct Delivery Warning</span>
+                  <span className="text-[#ff9f1c] flex items-center gap-1">👤 Auth Required</span>
+                </div>
+                <p className="text-xs text-[#7a95b0] leading-relaxed font-sans">
+                  Your Google Workspace/Gmail API access is not authorized for this session. 
+                  Click below to trigger a standard client-side email dispatch, or authorize "Google Sheets & Gmail" in the Database Hub to enable automatic background processing.
+                </p>
+              </div>
+
+              <a 
+                href={decisionMailtoUrl}
+                onClick={() => toast.success('Launching system mail app...')}
+                className="w-full py-3.5 bg-[#00e5c3] hover:bg-[#00c9ab] text-[#07090d] font-bold rounded-xl text-sm flex items-center justify-center gap-2.5 shadow-lg shadow-[#00e5c3]/15 transition-all text-center"
+              >
+                <Mail className="w-5 h-5" />
+                DISPATCH ACTUAL EMAIL NOW
+              </a>
+            </div>
+          )}
+        </div>
+
+        <button 
+          onClick={() => setDecisionResult(null)}
+          className="w-full py-3 bg-[#141c28] hover:bg-[#1c2738] border border-[#1f2d40] text-[#dde6f0] font-bold rounded-xl text-xs uppercase tracking-wider transition-all font-sans"
+        >
+          Return to Approvals
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -712,7 +1024,7 @@ function PendingView({ requests }: { requests: Request[] }) {
               </div>
               <div className="text-right">
                 <div className="text-xl font-bold text-[#00e5c3]">₹{r.cost.toLocaleString()}</div>
-                <div className="text-[10px] text-[#3d5570] uppercase">{r.type} · {r.priority}</div>
+                <div className="text-[10px] text-[#7a95b0] uppercase">{r.type} · {r.priority}</div>
               </div>
             </div>
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -760,12 +1072,12 @@ function PendingView({ requests }: { requests: Request[] }) {
                 <textarea 
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  className="w-full bg-[#0f1520] border border-[#1f2d40] rounded-xl px-4 py-2 text-sm focus:border-[#00e5c3] outline-none transition-all resize-none"
+                  className="w-full bg-[#0f1520] border border-[#1f2d40] rounded-xl px-4 py-2 text-sm focus:border-[#00e5c3] outline-none transition-all resize-none font-sans"
                   placeholder="Add approval remarks or rejection reasons..."
                   rows={2}
                 />
               </div>
-              <div className="flex gap-3 w-full md:w-auto">
+              <div className="flex gap-3 w-full md:w-auto font-sans">
                 <button 
                   onClick={() => handleAction(r, 'reject')}
                   className="flex-1 md:flex-none px-6 py-3 rounded-xl border border-[#ef476f]/30 text-[#ef476f] text-sm font-bold hover:bg-[#ef476f]/10 transition-all flex items-center justify-center gap-2"
