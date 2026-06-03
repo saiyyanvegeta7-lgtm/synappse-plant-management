@@ -1,0 +1,209 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and permissions",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["admin", "approver", "requester"] },
+        "dept": { "type": "string" },
+        "approvalLevel": { "type": "number", "description": "1, 2, or 3 for approvers" },
+        "canApprove": { "type": "boolean" },
+        "photoURL": { "type": "string" }
+      },
+      "required": ["uid", "name", "email", "role"]
+    },
+    "Request": {
+      "title": "Request",
+      "description": "Approval request",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "type": { "type": "string" },
+        "dept": { "type": "string" },
+        "status": { "type": "string", "enum": ["draft", "pending", "review", "approved", "rejected"] },
+        "priority": { "type": "string", "enum": ["Critical", "High", "Medium", "Low"] },
+        "cost": { "type": "number" },
+        "vendor": { "type": "string" },
+        "requesterUid": { "type": "string" },
+        "requesterName": { "type": "string" },
+        "date": { "type": "string" },
+        "dueDate": { "type": "string" },
+        "desc": { "type": "string" },
+        "approvalSteps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "level": { "type": "number" },
+              "role": { "type": "string" },
+              "person": { "type": "string" },
+              "status": { "type": "string", "enum": ["waiting", "active", "approved", "rejected"] },
+              "date": { "type": "string" },
+              "comment": { "type": "string" }
+            }
+          }
+        }
+      },
+      "required": ["title", "type", "status", "requesterUid"]
+    },
+    "PMTask": {
+      "title": "PMTask",
+      "description": "Preventive Maintenance Task",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "equip": { "type": "string" },
+        "task": { "type": "string" },
+        "zone": { "type": "string" },
+        "freq": { "type": "string" },
+        "dueDate": { "type": "string" },
+        "assignedTo": { "type": "string" },
+        "status": { "type": "string", "enum": ["upcoming", "due", "overdue", "done"] },
+        "dur": { "type": "number" },
+        "spares": { "type": "string" },
+        "safety": { "type": "string" }
+      },
+      "required": ["equip", "task", "dueDate", "status"]
+    },
+    "InventoryItem": {
+      "title": "InventoryItem",
+      "description": "Spare part inventory item",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "desc": { "type": "string" },
+        "category": { "type": "string" },
+        "equip": { "type": "string" },
+        "location": { "type": "string" },
+        "stock": { "type": "number" },
+        "unit": { "type": "string" },
+        "reorder": { "type": "number" },
+        "unitCost": { "type": "number" }
+      },
+      "required": ["code", "desc", "stock"]
+    },
+    "Solution": {
+      "title": "Solution",
+      "description": "Knowledge base entry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "equip": { "type": "string" },
+        "author": { "type": "string" },
+        "date": { "type": "string" },
+        "views": { "type": "number" },
+        "status": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "problem": { "type": "string" },
+        "steps": { "type": "string" }
+      },
+      "required": ["title", "problem", "steps"]
+    },
+    "Training": {
+      "title": "Training",
+      "description": "Training session",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "dur": { "type": "number" },
+        "date": { "type": "string" },
+        "trainer": { "type": "string" },
+        "seats": { "type": "number" },
+        "enrolled": { "type": "number" },
+        "mandatory": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["name", "date"]
+    },
+    "Breakdown": {
+      "title": "Breakdown",
+      "description": "Breakdown request and work order",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "workOrderNumber": { "type": "string" },
+        "assetName": { "type": "string" },
+        "assetTag": { "type": "string" },
+        "failureDesc": { "type": "string" },
+        "area": { "type": "string" },
+        "priority": { "type": "string", "enum": ["Critical", "High", "Medium", "Low"] },
+        "reportedByUid": { "type": "string" },
+        "reportedByName": { "type": "string" },
+        "reportedAt": { "type": "string" },
+        "status": { "type": "string", "enum": ["Reported", "In Progress", "Resolved", "Closed"] },
+        "assignedTo": { "type": "string" },
+        "actionsTaken": { "type": "string" },
+        "rootCause": { "type": "string" },
+        "sparesUsed": { "type": "string" },
+        "downtimeDuration": { "type": "number" },
+        "resolvedAt": { "type": "string" }
+      },
+      "required": ["workOrderNumber", "assetName", "assetTag", "failureDesc", "reportedByUid", "status"]
+    },
+    "Enquiry": {
+      "title": "Enquiry",
+      "description": "Plant or vendor operation enquiries",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "enquiryNumber": { "type": "string" },
+        "subject": { "type": "string" },
+        "type": { "type": "string", "enum": ["Procurement", "Maintenance Services", "Safety Audit", "Spares Supply", "General"] },
+        "senderName": { "type": "string" },
+        "senderContact": { "type": "string" },
+        "details": { "type": "string" },
+        "priority": { "type": "string", "enum": ["Critical", "High", "Medium", "Low"] },
+        "assignedTo": { "type": "string" },
+        "status": { "type": "string", "enum": ["Open", "Under Review", "Answered", "Closed"] },
+        "submittedByUid": { "type": "string" },
+        "submittedByName": { "type": "string" },
+        "submittedAt": { "type": "string" },
+        "responseDetails": { "type": "string" }
+      },
+      "required": ["enquiryNumber", "subject", "type", "senderName", "senderContact", "details", "submittedByUid", "status"]
+    }
+  },
+  "firestore": {
+    "users": {
+      "schema": { "$ref": "User" },
+      "description": "User profiles"
+    },
+    "requests": {
+      "schema": { "$ref": "Request" },
+      "description": "Approval requests"
+    },
+    "pmTasks": {
+      "schema": { "$ref": "PMTask" },
+      "description": "Preventive Maintenance tasks"
+    },
+    "inventory": {
+      "schema": { "$ref": "InventoryItem" },
+      "description": "Spare parts inventory"
+    },
+    "solutions": {
+      "schema": { "$ref": "Solution" },
+      "description": "Knowledge base solutions"
+    },
+    "trainings": {
+      "schema": { "$ref": "Training" },
+      "description": "Training sessions"
+    },
+    "breakdowns": {
+      "schema": { "$ref": "Breakdown" },
+      "description": "Breakdown requests and associated work orders"
+    },
+    "enquiries": {
+      "schema": { "$ref": "Enquiry" },
+      "description": "Plant enquiries store"
+    }
+  }
+}

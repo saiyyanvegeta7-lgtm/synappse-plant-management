@@ -1,0 +1,6 @@
+{
+  "name": "Synapse Plant Management",
+  "description": "A comprehensive plant management system with multi-level approval workflows, preventive maintenance, inventory tracking, and knowledge base.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
