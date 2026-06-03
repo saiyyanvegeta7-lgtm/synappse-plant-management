@@ -344,7 +344,8 @@ Synapse Operations Notification Hub
                   CANCEL
                 </button>
                 <button 
-                  type="submit" 
+                  type={sheetId && !accessToken ? "button" : "submit"} 
+                  onClick={sheetId && !accessToken ? connectGoogleSheets : undefined}
                   disabled={isSubmitting}
                   className="flex-1 bg-[#00e5c3] text-[#07090d] px-4 py-3 rounded-xl text-sm font-bold hover:brightness-110 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
@@ -353,7 +354,9 @@ Synapse Operations Notification Hub
                       <div className="w-4 h-4 border-2 border-[#07090d]/30 border-t-[#07090d] rounded-full animate-spin" />
                       SUBMITTING...
                     </>
-                  ) : 'SUBMIT REQUEST'}
+                  ) : (
+                    sheetId && !accessToken ? 'AUTHORIZE GOOGLE SHEETS & MAIL' : 'SUBMIT REQUEST'
+                  )}
                 </button>
               </div>
             </form>
@@ -746,8 +749,17 @@ function RequestsView({ requests }: { requests: Request[] }) {
 }
 
 function PendingView({ requests }: { requests: Request[] }) {
-  const { profile, accessToken } = useAuth();
+  const { profile, accessToken, connectGoogleSheets } = useAuth();
   const [comment, setComment] = useState('');
+  const [sheetId, setSheetId] = useState('');
+
+  useEffect(() => {
+    const unsubscribe = SettingsService.subscribeToGlobalSettings((settings) => {
+      setSheetId(settings.plant_ops_spreadsheet_id || '');
+    });
+    return () => unsubscribe();
+  }, []);
+
   const [decisionResult, setDecisionResult] = useState<{
     id: string;
     title: string;
@@ -1078,18 +1090,29 @@ Synapse Operations Notification Hub
                 />
               </div>
               <div className="flex gap-3 w-full md:w-auto font-sans">
-                <button 
-                  onClick={() => handleAction(r, 'reject')}
-                  className="flex-1 md:flex-none px-6 py-3 rounded-xl border border-[#ef476f]/30 text-[#ef476f] text-sm font-bold hover:bg-[#ef476f]/10 transition-all flex items-center justify-center gap-2"
-                >
-                  <X className="w-4 h-4" /> REJECT
-                </button>
-                <button 
-                  onClick={() => handleAction(r, 'approve')}
-                  className="flex-1 md:flex-none px-6 py-3 rounded-xl bg-[#06d6a0] text-[#07090d] text-sm font-bold hover:brightness-110 transition-all flex items-center justify-center gap-2"
-                >
-                  <Check className="w-4 h-4" /> APPROVE
-                </button>
+                {sheetId && !accessToken ? (
+                  <button 
+                    onClick={connectGoogleSheets}
+                    className="w-full md:w-auto px-6 py-3 rounded-xl bg-[#ff9f1c] text-[#07090d] text-sm font-bold hover:brightness-110 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Database className="w-4 h-4" /> AUTHORIZE GOOGLE TO SUBMIT DECISION
+                  </button>
+                ) : (
+                  <>
+                    <button 
+                      onClick={() => handleAction(r, 'reject')}
+                      className="flex-1 md:flex-none px-6 py-3 rounded-xl border border-[#ef476f]/30 text-[#ef476f] text-sm font-bold hover:bg-[#ef476f]/10 transition-all flex items-center justify-center gap-2"
+                    >
+                      <X className="w-4 h-4" /> REJECT
+                    </button>
+                    <button 
+                      onClick={() => handleAction(r, 'approve')}
+                      className="flex-1 md:flex-none px-6 py-3 rounded-xl bg-[#06d6a0] text-[#07090d] text-sm font-bold hover:brightness-110 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Check className="w-4 h-4" /> APPROVE
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>

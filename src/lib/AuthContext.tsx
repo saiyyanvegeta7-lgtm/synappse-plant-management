@@ -24,9 +24,20 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [accessToken, setAccessTokenState] = useState<string | null>(() => {
+    return localStorage.getItem('google_access_token');
+  });
   const [loading, setLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
+
+  const setAccessToken = (token: string | null) => {
+    setAccessTokenState(token);
+    if (token) {
+      localStorage.setItem('google_access_token', token);
+    } else {
+      localStorage.removeItem('google_access_token');
+    }
+  };
 
   const updateProfile = async (updates: Partial<UserProfile>) => {
     if (!user) return;
